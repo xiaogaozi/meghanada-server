@@ -61,7 +61,7 @@ public class GradleProject extends Project {
   private static String tempPath;
 
   private File rootProject;
-  private transient Map<String, File> allModules;
+  transient Map<String, File> allModules;
   private transient List<String> prepareCompileTask;
   private transient List<String> prepareTestCompileTask;
   private transient ComparableVersion gradleVersion = null;
@@ -162,7 +162,7 @@ public class GradleProject extends Project {
                         ideaModule.getGradleProject();
                     final File moduleProjectRoot = gradleProject.getProjectDirectory();
                     final String name = ideaModule.getName();
-                    log.trace("find sub-module name {}:{} path:{} ", name, moduleProjectRoot);
+                    log.trace("find sub-module name {} path {} ", name, moduleProjectRoot);
                     this.allModules.putIfAbsent(name, moduleProjectRoot);
                     return moduleProjectRoot.equals(this.getProjectRoot());
                   })
@@ -205,6 +205,9 @@ public class GradleProject extends Project {
     final AndroidProject androidProject =
         AndroidSupport.getAndroidProject(this.rootProject, gradleProject);
     if (nonNull(androidProject)) {
+
+      Set<ProjectDependency> projectDependencies = analyzeDependencies(ideaModule);
+      this.dependencies.addAll(projectDependencies);
       // parse android
       this.isAndroidProject = true;
       final AndroidSupport androidSupport = new AndroidSupport(this);
@@ -269,7 +272,7 @@ public class GradleProject extends Project {
       this.testSources.add(file);
     }
 
-    if (this.output == null) {
+    if (isNull(this.output)) {
       final String buildDir = new File(this.getProjectRoot(), "build").getCanonicalPath();
       String build = Joiner.on(File.separator).join(buildDir, "classes", "main");
       if (nonNull(gradleVersion) && gradleVersion.compareTo(new ComparableVersion("4.0")) >= 0) {
@@ -277,7 +280,7 @@ public class GradleProject extends Project {
       }
       this.output = this.normalize(build);
     }
-    if (this.testOutput == null) {
+    if (isNull(this.testOutput)) {
       final String buildDir = new File(this.getProjectRoot(), "build").getCanonicalPath();
       String build = Joiner.on(File.separator).join(buildDir, "classes", "test");
       if (nonNull(gradleVersion) && gradleVersion.compareTo(new ComparableVersion("4.0")) >= 0) {
@@ -352,7 +355,7 @@ public class GradleProject extends Project {
       build.run(handler);
       return inputStream;
     } finally {
-      System.setProperty(PROJECT_ROOT_KEY, this.projectRoot.getCanonicalPath());
+      Config.setProjectRoot(this.projectRoot.getCanonicalPath());
     }
   }
 

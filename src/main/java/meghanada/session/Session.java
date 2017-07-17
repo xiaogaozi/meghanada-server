@@ -139,7 +139,7 @@ public class Session {
         log.traceEntry("projectRoot={} targetFile={}", projectRoot, targetFile);
 
     final String projectRootPath = projectRoot.getCanonicalPath();
-    System.setProperty(Project.PROJECT_ROOT_KEY, projectRootPath);
+    Config.setProjectRoot(projectRootPath);
 
     try {
       final Config config = Config.load();
@@ -149,7 +149,7 @@ public class Session {
         // loaded skip
         final Project project = Project.loadedProject.get(id);
         log.traceExit(entryMessage);
-        System.setProperty(Project.PROJECT_ROOT_KEY, projectRootPath);
+        Config.setProjectRoot(projectRootPath);
         return Optional.of(project);
       }
 
@@ -194,7 +194,7 @@ public class Session {
       log.traceExit(entryMessage);
       return Optional.of(parsed.mergeFromProjectConfig());
     } finally {
-      System.setProperty(Project.PROJECT_ROOT_KEY, projectRootPath);
+      Config.setProjectRoot(projectRootPath);
     }
   }
 
@@ -265,7 +265,7 @@ public class Session {
       this.currentProject = this.projects.get(projectRoot);
       log.info("change project {}", this.currentProject.getName());
       String projectRootPath = this.currentProject.getProjectRootPath();
-      System.setProperty(Project.PROJECT_ROOT_KEY, projectRootPath);
+      Config.setProjectRoot(projectRootPath);
       this.getLocationSearcher().setProject(currentProject);
       this.getDeclarationSearcher().setProject(this.currentProject);
       this.getVariableCompletion().setProject(this.currentProject);
@@ -290,6 +290,8 @@ public class Session {
   private boolean setProject(final File projectRoot, final Project project) {
     this.currentProject = project;
     log.info("change project {}", this.currentProject.getName());
+    String projectRootPath = this.currentProject.getProjectRootPath();
+    Config.setProjectRoot(projectRootPath);
     this.projects.put(projectRoot, this.currentProject);
     this.getLocationSearcher().setProject(currentProject);
     this.getDeclarationSearcher().setProject(this.currentProject);
@@ -551,6 +553,7 @@ public class Session {
     return currentProject
         .getDependencies()
         .stream()
+        .filter(pd -> !pd.getType().equals(ProjectDependency.Type.PROJECT))
         .map(ProjectDependency::getFile)
         .collect(Collectors.toList());
   }
@@ -563,9 +566,9 @@ public class Session {
     return file;
   }
 
-  public InputStream runJUnit(String path, String test) throws IOException {
+  public InputStream runJUnit(String path, String test, boolean debug) throws IOException {
     boolean b = this.changeProject(path);
-    return currentProject.runJUnit(test);
+    return currentProject.runJUnit(debug, test);
   }
 
   public Optional<String> switchTest(final String path) throws IOException {
@@ -703,7 +706,7 @@ public class Session {
     return declarationSearcher;
   }
 
-  public InputStream execMain(String path) throws Exception {
+  public InputStream execMain(String path, boolean debug) throws Exception {
     boolean b = this.changeProject(path);
     Optional<Source> source = this.parseJavaSource(new File(path));
     return source
@@ -711,7 +714,7 @@ public class Session {
             src -> {
               try {
                 String clazz = src.getFQCN();
-                return currentProject.execMainClass(clazz);
+                return currentProject.execMainClass(clazz, debug);
               } catch (IOException e) {
                 throw new UncheckedIOException(e);
               }
@@ -752,5 +755,9 @@ public class Session {
     boolean b = this.changeProject(path);
     final TypeInfoSearcher searcher = this.getTypeInfoSearcher();
     return searcher.search(new File(path), line, column, symbol);
+  }
+
+  public void killRunningProcess() {
+    getCurrentProject().killRunningProcess();
   }
 }
