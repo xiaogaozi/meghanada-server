@@ -1174,6 +1174,10 @@ public class TreeAnalyzer {
       Type returnType = methodType.getReturnType();
       if (nonNull(returnType) && nonNull(returnType.tsym)) {
         String baseType = returnType.tsym.flatName().toString();
+        if (baseType.equals("Array")) {
+          log.debug("method return type is \"Array\", ignore it.");
+          return Optional.empty();
+        }
         List<Type> typeArguments = returnType.getTypeArguments();
         baseType = getFlatName(src, baseType, typeArguments);
         return Optional.of(baseType);
